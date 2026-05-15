@@ -184,6 +184,8 @@ export function Admin() {
       links.push(<> | </>);
     }
     links.push(<a href="/admin/filters">Filters</a>);
+    links.push(<> | </>);
+    links.push(<a href="/admin/users">Users</a>);
     links.push(<>]</>);
     return links;
   };

@@ -1,0 +1,43 @@
+# ============================================================
+# EveBox 完整项目启动指南
+# Suricata (模拟器) → Elasticsearch → EveBox → Web UI
+# ============================================================
+
+# --- 1. 启动 Elasticsearch ---
+cd elasticsearch/elasticsearch-7.17.28
+set ES_JAVA_HOME=C:\Program Files\Java\jdk-17.0.18
+bin\elasticsearch.bat
+
+# --- 2. 启动 Suricata 模拟器 (持续生成事件) ---
+cd ../../
+set EVE_OUTPUT=c:/Users/lxd/evebox/data/suricata-eve.json
+set EVE_INTERVAL=1.5
+python tools/suricata_simulator.py
+
+# --- 3. 启动 EveBox (ES 后端 + EVE 文件输入) ---
+./target/debug/evebox.exe server ^
+  --datastore elasticsearch ^
+  --no-auth --no-tls ^
+  -D ./data ^
+  -e http://localhost:9200 ^
+  -i evebox ^
+  --input ./data/suricata-eve.json ^
+  -p 15637
+
+# --- 4. 浏览器访问 ---
+# http://127.0.0.1:15637
+
+# ============================================================
+# 验证数据流:
+#   curl http://localhost:9200/_cat/indices/evebox*?format=json
+#   curl http://127.0.0.1:15637/api/alerts | python -m json.tool
+#   curl http://127.0.0.1:15637/api/sensors
+#   curl http://127.0.0.1:15637/api/event_types
+# ============================================================
+
+# 当前运行状态:
+#   端口 15636: EveBox (SQLite 后端, 旧数据)
+#   端口 15637: EveBox (ES 后端, 实时数据) ✓ 当前
+#   Suricata 模拟器: 运行中, ~1 event/1.5s
+#   Elasticsearch: localhost:9200, ES 7.17.28
+#   ES 索引: evebox-2026.05.15, ~140+ docs

@@ -308,7 +308,7 @@ async fn create_admin_user(context: &ServerContext) -> Result<(String, String)> 
         .take(12)
         .map(char::from)
         .collect();
-    context.configdb.add_user(username, &password).await?;
+    context.configdb.create_user(username, &password, "admin").await?;
     Ok((username.to_string(), password))
 }
 
@@ -705,6 +705,7 @@ where
                     let session = Session {
                         session_id: Some(session_id.to_string()),
                         username: Some(user.username),
+                        role: user.role,
                     };
                     let session = Arc::new(session);
                     let _ = context.session_store.put(session.clone());
@@ -743,7 +744,11 @@ where
                     .await
                 {
                     Ok(user) => {
-                        return Ok(Self(Arc::new(Session::with_username(&user.username))));
+                        let role = user.role.clone().unwrap_or_default();
+                        return Ok(Self(Arc::new(Session::with_username_and_role(
+                            &user.username,
+                            &role,
+                        ))));
                     }
                     Err(err) => {
                         warn!(

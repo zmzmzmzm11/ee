@@ -14,3 +14,7 @@
 /data
 **/.claude/settings.local.json
 /*.pcap
+/elasticsearch/
+/*.zip
+*.docx
+/tools/__pycache__/

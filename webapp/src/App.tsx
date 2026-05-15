@@ -15,7 +15,7 @@ import * as API from "./api";
 import { Alerts, AlertState } from "./Alerts";
 import { Loader } from "./Loader";
 import { Login } from "./Login";
-import { Settings } from "./Settings";
+import { Settings } from "./Settings.tsx";
 
 import "./styles/transitions.scss";
 import { EventView } from "./EventView";
@@ -32,6 +32,7 @@ import { Ja4Report } from "./pages/ja4";
 import { Admin } from "./pages/admin/Admin";
 import { AdminFilters } from "./pages/admin/AdminFilters";
 import { AdminElastic } from "./pages/admin/AdminElastic";
+import { AdminUsers } from "./pages/admin/AdminUsers";
 
 export function AppRouter() {
   return (
@@ -67,6 +68,7 @@ export function AppRouter() {
         <Route path="admin" component={Admin} />
         <Route path="admin/filters" component={AdminFilters} />
         <Route path="admin/elastic" component={AdminElastic} />
+        <Route path="admin/users" component={AdminUsers} />
 
         <Route path="*" component={RedirectToIndex} />
       </Route>

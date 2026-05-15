@@ -77,6 +77,7 @@ pub(crate) async fn post(
         info!("Creating session for user {:?}", &username);
         let mut session = Session::new();
         session.username = Some(user.username);
+        session.role = user.role;
         let session = Arc::new(session);
         context.session_store.put(session.clone()).unwrap();
 

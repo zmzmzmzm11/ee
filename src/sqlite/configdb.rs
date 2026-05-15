@@ -57,6 +57,8 @@ pub(crate) struct FilterEntry {
 pub(crate) struct User {
     pub uuid: String,
     pub username: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -81,15 +83,16 @@ impl ConfigDb {
         password_in: &str,
     ) -> Result<User, ConfigDbError> {
         let query = sqlx::query::<sqlx::Sqlite>(
-            "SELECT uuid, username, password FROM users WHERE username = ?",
+            "SELECT uuid, username, password, role FROM users WHERE username = ?",
         )
         .bind(username);
         if let Some(row) = query.fetch_optional(&self.pool).await? {
             let uuid: String = row.try_get(0)?;
             let username: String = row.try_get(1)?;
             let password_hash: String = row.try_get(2)?;
+            let role: String = row.try_get(3)?;
             if bcrypt::verify(password_in, &password_hash)? {
-                return Ok(User { uuid, username });
+                return Ok(User { uuid, username, role: Some(role) });
             } else {
                 return Err(ConfigDbError::BadPassword(username));
             }
@@ -99,7 +102,7 @@ impl ConfigDb {
     }
 
     pub async fn get_user_by_name(&self, username: &str) -> Result<User, ConfigDbError> {
-        let row = sqlx::query("SELECT uuid, username FROM users WHERE username = ?")
+        let row = sqlx::query("SELECT uuid, username, role FROM users WHERE username = ?")
             .bind(username)
             .fetch_optional(&self.pool)
             .await?;
@@ -107,6 +110,7 @@ impl ConfigDb {
             Ok(User {
                 uuid: row.try_get("uuid")?,
                 username: row.try_get("username")?,
+                role: row.try_get("role")?,
             })
         } else {
             Err(ConfigDbError::NoUser(username.to_string()))
@@ -122,14 +126,16 @@ impl ConfigDb {
     }
 
     pub async fn get_users(&self) -> Result<Vec<User>, ConfigDbError> {
-        let rows: Vec<(String, String)> = sqlx::query_as("SELECT uuid, username FROM users")
-            .fetch_all(&self.pool)
-            .await?;
+        let rows: Vec<(String, String, String)> =
+            sqlx::query_as("SELECT uuid, username, role FROM users WHERE username != '__system__'")
+                .fetch_all(&self.pool)
+                .await?;
         Ok(rows
             .into_iter()
             .map(|row| User {
                 uuid: row.0,
                 username: row.1,
+                role: Some(row.2),
             })
             .collect())
     }
@@ -168,6 +174,62 @@ impl ConfigDb {
         Ok(result.rows_affected() > 0)
     }
 
+    pub async fn create_user(
+        &self,
+        username: &str,
+        password: &str,
+        role: &str,
+    ) -> Result<String, ConfigDbError> {
+        let password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)?;
+        let user_id = uuid::Uuid::new_v4().to_string();
+        sqlx::query(
+            "INSERT INTO users (uuid, username, password, role) VALUES (?, ?, ?, ?)",
+        )
+        .bind(&user_id)
+        .bind(username)
+        .bind(password_hash)
+        .bind(role)
+        .execute(&self.pool)
+        .await?;
+        Ok(user_id)
+    }
+
+    pub async fn delete_user_by_uuid(&self, id: &str) -> Result<u64, ConfigDbError> {
+        // Delete sessions first (foreign key constraint)
+        sqlx::query("DELETE FROM sessions WHERE uuid = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(sqlx::query("DELETE FROM users WHERE uuid = ? AND username != '__system__'")
+            .bind(id)
+            .execute(&self.pool)
+            .await?
+            .rows_affected())
+    }
+
+    pub async fn reset_user_password(
+        &self,
+        id: &str,
+        password: &str,
+    ) -> Result<bool, ConfigDbError> {
+        let password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)?;
+        let result = sqlx::query("UPDATE users SET password = ? WHERE uuid = ?")
+            .bind(&password_hash)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    pub async fn get_user_role(&self, username: &str) -> Result<Option<String>, ConfigDbError> {
+        let role: Option<String> =
+            sqlx::query_scalar("SELECT role FROM users WHERE username = ?")
+                .bind(username)
+                .fetch_optional(&self.pool)
+                .await?;
+        Ok(role)
+    }
+
     pub async fn save_session(
         &self,
         token: &str,
@@ -201,9 +263,9 @@ impl ConfigDb {
 
     pub async fn get_user_by_session(&self, token: &str) -> Result<Option<User>, ConfigDbError> {
         let sql = r#"
-            SELECT users.uuid, users.username, sessions.expires_at
-            FROM users 
-            JOIN sessions ON 
+            SELECT users.uuid, users.username, users.role, sessions.expires_at
+            FROM users
+            JOIN sessions ON
             users.uuid = sessions.uuid
             WHERE sessions.token = ?"#;
 
@@ -216,6 +278,7 @@ impl ConfigDb {
         {
             let uuid: String = row.try_get("uuid")?;
             let username: String = row.try_get("username")?;
+            let role: String = row.try_get("role")?;
             let expires_at: i64 = row.try_get("expires_at")?;
 
             let now = DateTime::now().to_seconds();
@@ -233,7 +296,7 @@ impl ConfigDb {
                 return Ok(None);
             }
             tx.commit().await?;
-            return Ok(Some(User { uuid, username }));
+            return Ok(Some(User { uuid, username, role: Some(role) }));
         }
         Ok(None)
     }

@@ -140,3 +140,129 @@ pub(super) async fn kv_set_config(
     context.configdb.kv_set_config(&key, &value).await?;
     Ok(())
 }
+
+// ====== User Management ======
+
+use serde::Deserialize;
+
+#[derive(Deserialize, Debug)]
+pub(super) struct CreateUserRequest {
+    pub username: String,
+    pub password: String,
+    #[serde(default = "default_role")]
+    pub role: String,
+}
+
+fn default_role() -> String {
+    "user".to_string()
+}
+
+#[derive(Deserialize, Debug)]
+pub(super) struct ResetPasswordRequest {
+    pub password: String,
+}
+
+async fn require_admin(context: &Arc<ServerContext>, session: &crate::server::session::Session) -> Result<(), AppError> {
+    if let Some(username) = &session.username {
+        match context.configdb.get_user_role(username).await {
+            Ok(Some(role)) if role == "admin" => return Ok(()),
+            Ok(_) => return Err(AppError::BadRequest("admin role required".to_string())),
+            Err(err) => {
+                error!("Failed to check user role: {:?}", err);
+                return Err(AppError::InternalServerError);
+            }
+        }
+    }
+    Err(AppError::BadRequest("admin role required".to_string()))
+}
+
+/// GET /api/admin/users — list all users
+pub(super) async fn get_users(
+    session: SessionExtractor,
+    Extension(context): Extension<Arc<ServerContext>>,
+) -> Result<impl IntoResponse, AppError> {
+    require_admin(&context, &session.0).await?;
+    let users = context.configdb.get_users().await?;
+    Ok(Json(users))
+}
+
+/// POST /api/admin/users — create a new user
+pub(super) async fn create_user(
+    session: SessionExtractor,
+    Extension(context): Extension<Arc<ServerContext>>,
+    Json(req): Json<CreateUserRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    require_admin(&context, &session.0).await?;
+
+    if req.username.trim().is_empty() {
+        return Err(AppError::BadRequest("username is required".to_string()));
+    }
+    if req.password.len() < 4 {
+        return Err(AppError::BadRequest("password must be at least 4 characters".to_string()));
+    }
+    if req.role != "admin" && req.role != "user" {
+        return Err(AppError::BadRequest("role must be 'admin' or 'user'".to_string()));
+    }
+
+    let user_id = context
+        .configdb
+        .create_user(&req.username.trim(), &req.password, &req.role)
+        .await
+        .map_err(|err| {
+            error!("Failed to create user: {:?}", err);
+            AppError::BadRequest(format!("failed to create user: {}", err))
+        })?;
+
+    info!("Admin created user: username={}, role={}", req.username, &req.role);
+    Ok(Json(json!({
+        "uuid": user_id,
+        "username": req.username.trim(),
+        "role": req.role,
+    })))
+}
+
+/// DELETE /api/admin/users/{id} — delete a user
+pub(super) async fn delete_user(
+    session: SessionExtractor,
+    Extension(context): Extension<Arc<ServerContext>>,
+    Path(user_id): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    require_admin(&context, &session.0).await?;
+
+    let n = context.configdb.delete_user_by_uuid(&user_id).await?;
+    if n == 0 {
+        return Err(AppError::BadRequest("user not found".to_string()));
+    }
+
+    info!("Admin deleted user: uuid={}", &user_id);
+    Ok(Json(json!({
+        "deleted": true,
+    })))
+}
+
+/// POST /api/admin/users/{id}/password — reset user password
+pub(super) async fn reset_user_password(
+    session: SessionExtractor,
+    Extension(context): Extension<Arc<ServerContext>>,
+    Path(user_id): Path<String>,
+    Json(req): Json<ResetPasswordRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    require_admin(&context, &session.0).await?;
+
+    if req.password.len() < 4 {
+        return Err(AppError::BadRequest("password must be at least 4 characters".to_string()));
+    }
+
+    let ok = context
+        .configdb
+        .reset_user_password(&user_id, &req.password)
+        .await?;
+    if !ok {
+        return Err(AppError::BadRequest("user not found".to_string()));
+    }
+
+    info!("Admin reset password for user: uuid={}", &user_id);
+    Ok(Json(json!({
+        "password_reset": true,
+    })))
+}

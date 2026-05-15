@@ -50,6 +50,12 @@ impl From<QueryStringParseError> for AppError {
     }
 }
 
+impl From<crate::sqlite::configdb::ConfigDbError> for AppError {
+    fn from(value: crate::sqlite::configdb::ConfigDbError) -> Self {
+        Self::BadRequest(format!("{value}"))
+    }
+}
+
 impl From<Box<dyn std::error::Error + std::marker::Send + Sync>> for AppError {
     fn from(value: Box<dyn std::error::Error + std::marker::Send + Sync>) -> Self {
         Self::StringError(value.to_string())

@@ -50,6 +50,7 @@ impl SessionStore {
 pub(crate) struct Session {
     pub session_id: Option<String>,
     pub username: Option<String>,
+    pub role: Option<String>,
 }
 
 impl Session {
@@ -58,6 +59,7 @@ impl Session {
         Session {
             session_id: Some(session_id),
             username: None,
+            role: None,
         }
     }
 
@@ -66,6 +68,16 @@ impl Session {
         Session {
             session_id: Some(session_id),
             username: Some(username.to_string()),
+            role: None,
+        }
+    }
+
+    pub fn with_username_and_role(username: &str, role: &str) -> Self {
+        let session_id = generate_session_id();
+        Session {
+            session_id: Some(session_id),
+            username: Some(username.to_string()),
+            role: Some(role.to_string()),
         }
     }
 
@@ -73,6 +85,7 @@ impl Session {
         Session {
             username,
             session_id: None,
+            role: None,
         }
     }
 }
