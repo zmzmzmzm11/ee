@@ -161,6 +161,11 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         );
     }
 
+    // Ensure admin users have the admin role (repair for databases created before role migration)
+    if let Err(err) = context.configdb.ensure_admin_role().await {
+        error!("Failed to ensure admin role for admin users: {:?}", err);
+    }
+
     if let Some(filename) = config_filename {
         match load_event_services(filename) {
             Err(err) => {

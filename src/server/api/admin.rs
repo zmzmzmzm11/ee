@@ -162,16 +162,17 @@ pub(super) struct ResetPasswordRequest {
     pub password: String,
 }
 
-async fn require_admin(context: &Arc<ServerContext>, session: &crate::server::session::Session) -> Result<(), AppError> {
-    if let Some(username) = &session.username {
-        match context.configdb.get_user_role(username).await {
-            Ok(Some(role)) if role == "admin" => return Ok(()),
-            Ok(_) => return Err(AppError::BadRequest("admin role required".to_string())),
-            Err(err) => {
-                error!("Failed to check user role: {:?}", err);
-                return Err(AppError::InternalServerError);
-            }
+async fn require_admin(_context: &Arc<ServerContext>, session: &crate::server::session::Session) -> Result<(), AppError> {
+    // Check session.role first — it's already loaded when the session was created
+    if let Some(role) = &session.role {
+        if role == "admin" {
+            return Ok(());
         }
+        return Err(AppError::BadRequest("admin role required".to_string()));
+    }
+    // Fallback: no role on session (shouldn't happen for logged-in users)
+    if session.username.is_some() {
+        warn!("Session has username but no role set");
     }
     Err(AppError::BadRequest("admin role required".to_string()))
 }
@@ -192,6 +193,8 @@ pub(super) async fn create_user(
     Extension(context): Extension<Arc<ServerContext>>,
     Json(req): Json<CreateUserRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    info!("create_user: username={}, role={}, session.username={:?}, session.role={:?}",
+        req.username, req.role, session.0.username, session.0.role);
     require_admin(&context, &session.0).await?;
 
     if req.username.trim().is_empty() {

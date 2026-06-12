@@ -21,11 +21,13 @@ export function AdminUsers() {
   const [newUsername, setNewUsername] = createSignal("");
   const [newPassword, setNewPassword] = createSignal("");
   const [newRole, setNewRole] = createSignal("user");
+  const [submitting, setSubmitting] = createSignal(false);
 
   const [showResetPwd, setShowResetPwd] = createSignal(false);
   const [resetUserId, setResetUserId] = createSignal("");
   const [resetUsername, setResetUsername] = createSignal("");
   const [resetPassword, setResetPassword] = createSignal("");
+  const [resettingPwd, setResettingPwd] = createSignal(false);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -46,8 +48,23 @@ export function AdminUsers() {
   };
 
   const handleCreateUser = async () => {
-    if (!newUsername().trim() || !newPassword()) return;
     setError("");
+    setSuccess("");
+
+    if (!newUsername().trim()) {
+      setError("Username is required");
+      return;
+    }
+    if (!newPassword()) {
+      setError("Password is required");
+      return;
+    }
+    if (newPassword().length < 4) {
+      setError("Password must be at least 4 characters");
+      return;
+    }
+
+    setSubmitting(true);
     try {
       const response = await fetch("/api/admin/users", {
         method: "POST",
@@ -69,7 +86,14 @@ export function AdminUsers() {
       setShowCreate(false);
       fetchUsers();
     } catch (e: any) {
-      setError(e.message || "Failed to create user");
+      console.error("Create user failed:", e);
+      if (e instanceof TypeError && e.message === "Failed to fetch") {
+        setError("Cannot connect to server. Make sure the backend is running on port 5636.");
+      } else {
+        setError(e.message || "Failed to create user");
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -99,8 +123,19 @@ export function AdminUsers() {
   };
 
   const handleResetPassword = async () => {
-    if (!resetPassword()) return;
     setError("");
+    setSuccess("");
+
+    if (!resetPassword()) {
+      setError("Password is required");
+      return;
+    }
+    if (resetPassword().length < 4) {
+      setError("Password must be at least 4 characters");
+      return;
+    }
+
+    setResettingPwd(true);
     try {
       const response = await fetch(`/api/admin/users/${resetUserId()}/password`, {
         method: "POST",
@@ -115,6 +150,8 @@ export function AdminUsers() {
       setShowResetPwd(false);
     } catch (e: any) {
       setError(e.message || "Failed to reset password");
+    } finally {
+      setResettingPwd(false);
     }
   };
 
@@ -200,12 +237,17 @@ export function AdminUsers() {
             <Modal.Title>Create User</Modal.Title>
           </Modal.Header>
           <Modal.Body>
+            {error() && (
+              <Alert variant="danger" dismissible onclose={() => setError("")}>
+                {error()}
+              </Alert>
+            )}
             <Form.Group class="mb-3">
               <Form.Label>Username</Form.Label>
               <Form.Control
                 type="text"
                 value={newUsername()}
-                oninput={(e: any) => setNewUsername(e.target.value)}
+                onInput={(e: any) => setNewUsername(e.target.value)}
                 placeholder="Enter username"
               />
             </Form.Group>
@@ -214,7 +256,7 @@ export function AdminUsers() {
               <Form.Control
                 type="password"
                 value={newPassword()}
-                oninput={(e: any) => setNewPassword(e.target.value)}
+                onInput={(e: any) => setNewPassword(e.target.value)}
                 placeholder="Enter password (min 4 chars)"
               />
             </Form.Group>
@@ -222,7 +264,7 @@ export function AdminUsers() {
               <Form.Label>Role</Form.Label>
               <Form.Select
                 value={newRole()}
-                onchange={(e: any) => setNewRole(e.target.value)}
+                onChange={(e: any) => setNewRole(e.target.value)}
               >
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
@@ -233,8 +275,8 @@ export function AdminUsers() {
             <Button variant="secondary" onclick={() => setShowCreate(false)}>
               Cancel
             </Button>
-            <Button variant="primary" onclick={() => handleCreateUser()}>
-              Create
+            <Button variant="primary" onclick={() => handleCreateUser()} disabled={submitting()}>
+              {submitting() ? "Creating..." : "Create"}
             </Button>
           </Modal.Footer>
         </Modal>
@@ -245,13 +287,18 @@ export function AdminUsers() {
             <Modal.Title>Reset Password - {resetUsername()}</Modal.Title>
           </Modal.Header>
           <Modal.Body>
+            {error() && (
+              <Alert variant="danger" dismissible onclose={() => setError("")}>
+                {error()}
+              </Alert>
+            )}
             <Form.Group class="mb-3">
               <Form.Label>New Password</Form.Label>
               <Form.Control
                 type="password"
                 value={resetPassword()}
-                oninput={(e: any) => setResetPassword(e.target.value)}
-                placeholder="Enter new password"
+                onInput={(e: any) => setResetPassword(e.target.value)}
+                placeholder="Enter new password (min 4 chars)"
               />
             </Form.Group>
           </Modal.Body>
@@ -259,8 +306,8 @@ export function AdminUsers() {
             <Button variant="secondary" onclick={() => setShowResetPwd(false)}>
               Cancel
             </Button>
-            <Button variant="primary" onclick={() => handleResetPassword()}>
-              Reset Password
+            <Button variant="primary" onclick={() => handleResetPassword()} disabled={resettingPwd()}>
+              {resettingPwd() ? "Resetting..." : "Reset Password"}
             </Button>
           </Modal.Footer>
         </Modal>

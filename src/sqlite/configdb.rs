@@ -90,9 +90,9 @@ impl ConfigDb {
             let uuid: String = row.try_get(0)?;
             let username: String = row.try_get(1)?;
             let password_hash: String = row.try_get(2)?;
-            let role: String = row.try_get(3)?;
+            let role: Option<String> = row.try_get(3).ok();
             if bcrypt::verify(password_in, &password_hash)? {
-                return Ok(User { uuid, username, role: Some(role) });
+                return Ok(User { uuid, username, role });
             } else {
                 return Err(ConfigDbError::BadPassword(username));
             }
@@ -110,7 +110,7 @@ impl ConfigDb {
             Ok(User {
                 uuid: row.try_get("uuid")?,
                 username: row.try_get("username")?,
-                role: row.try_get("role")?,
+                role: row.try_get("role").ok(),
             })
         } else {
             Err(ConfigDbError::NoUser(username.to_string()))
@@ -126,7 +126,7 @@ impl ConfigDb {
     }
 
     pub async fn get_users(&self) -> Result<Vec<User>, ConfigDbError> {
-        let rows: Vec<(String, String, String)> =
+        let rows: Vec<(String, String, Option<String>)> =
             sqlx::query_as("SELECT uuid, username, role FROM users WHERE username != '__system__'")
                 .fetch_all(&self.pool)
                 .await?;
@@ -135,7 +135,7 @@ impl ConfigDb {
             .map(|row| User {
                 uuid: row.0,
                 username: row.1,
-                role: Some(row.2),
+                role: row.2,
             })
             .collect())
     }
@@ -143,12 +143,14 @@ impl ConfigDb {
     pub async fn add_user(&self, username: &str, password: &str) -> Result<String, ConfigDbError> {
         let password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)?;
         let user_id = uuid::Uuid::new_v4().to_string();
-        sqlx::query("INSERT INTO users (uuid, username, password) VALUES (?, ?, ?)")
-            .bind(&user_id)
-            .bind(username)
-            .bind(password_hash)
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(
+            "INSERT INTO users (uuid, username, password, role) VALUES (?, ?, ?, 'admin')",
+        )
+        .bind(&user_id)
+        .bind(username)
+        .bind(password_hash)
+        .execute(&self.pool)
+        .await?;
         Ok(user_id)
     }
 
@@ -158,6 +160,15 @@ impl ConfigDb {
             .execute(&self.pool)
             .await?
             .rows_affected())
+    }
+
+    /// Ensure any user named "admin" has the admin role (repair for databases
+    /// created before the role migration).
+    pub async fn ensure_admin_role(&self) -> Result<(), ConfigDbError> {
+        sqlx::query("UPDATE users SET role = 'admin' WHERE username = 'admin' AND (role IS NULL OR role != 'admin')")
+            .execute(&self.pool)
+            .await?;
+        Ok(())
     }
 
     pub async fn update_password_by_id(
@@ -278,7 +289,7 @@ impl ConfigDb {
         {
             let uuid: String = row.try_get("uuid")?;
             let username: String = row.try_get("username")?;
-            let role: String = row.try_get("role")?;
+            let role: Option<String> = row.try_get("role").ok();
             let expires_at: i64 = row.try_get("expires_at")?;
 
             let now = DateTime::now().to_seconds();
@@ -296,7 +307,7 @@ impl ConfigDb {
                 return Ok(None);
             }
             tx.commit().await?;
-            return Ok(Some(User { uuid, username, role: Some(role) }));
+            return Ok(Some(User { uuid, username, role }));
         }
         Ok(None)
     }
