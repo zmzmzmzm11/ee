@@ -19,7 +19,7 @@ services:
     command:
       - sh
       - -c
-      - pip install scapy && python /app/simulator.py
+      - python /app/simulator.py
     restart: unless-stopped
 
   # ===== Elasticsearch =====

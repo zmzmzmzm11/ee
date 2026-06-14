@@ -101,10 +101,15 @@ docker-up:
 docker-dev:
 	docker compose -f docker-compose.dev.yml up -d --build
 
+# Start with SQLite standalone (no ES required)
+docker-sqlite:
+	docker compose -f docker-compose.sqlite.yml up -d --build
+
 # Stop docker-compose
 docker-down:
 	docker compose down
 	docker compose -f docker-compose.dev.yml down
+	docker compose -f docker-compose.sqlite.yml down
 
 # View logs
 docker-logs:

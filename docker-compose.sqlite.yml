@@ -1,0 +1,34 @@
+# EveBox SQLite 独立模式 Docker Compose
+# 无需 Elasticsearch，使用嵌入式 SQLite 数据库
+# 启动: docker compose -f docker-compose.sqlite.yml up -d --build
+# 注意: 需要先把 eve.json 放到 ./data/ 目录下
+
+version: "3.8"
+
+services:
+  evebox:
+    image: evebox:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GIT_REV: ${GIT_REV:-unknown}
+    container_name: evebox-sqlite
+    ports:
+      - "5636:5636"
+    volumes:
+      - evebox-data:/var/lib/evebox
+      - ./data:/data:ro
+    command:
+      - --datastore
+      - sqlite
+      - --no-auth
+      - -D
+      - /var/lib/evebox
+      - --input
+      - /data/suricata-eve.json
+    restart: unless-stopped
+
+volumes:
+  evebox-data:
+    driver: local

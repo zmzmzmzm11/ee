@@ -13,15 +13,21 @@ RUN echo "export const GIT_REV = \"${GIT_REV}\";" > src/gitrev.ts \
  && npm run build
 
 # ===== Stage 2: Backend Build =====
-FROM rust:1.85-alpine AS backend
+FROM rust:1-alpine AS backend
 RUN apk add --no-cache musl-dev sqlite-dev
 WORKDIR /build
-# Copy dependency manifests first for caching
+
+# Copy dependency manifests (for Docker layer caching)
 COPY Cargo.toml Cargo.lock ./
+
+# Copy source files needed for compilation
 COPY src/ ./src/
 COPY resources/configdb/ ./resources/configdb/
-# Copy built frontend
+
+# Copy built frontend from stage 1
 COPY --from=frontend /build/webapp/dist ./resources/webapp/
+
+# Build release binary
 RUN cargo build --release \
  && strip target/release/evebox
 
