@@ -653,7 +653,9 @@ add_table(
 )
 
 # ==================== Save ====================
+from datetime import datetime
 desktop = os.path.join(os.path.expanduser('~'), 'Desktop')
-filepath = os.path.join(desktop, 'EveBox安装部署与使用文档.docx')
+ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+filepath = os.path.join(desktop, f'EveBox文档_{ts}.docx')
 doc.save(filepath)
 print(f'Document saved to: {filepath}')
