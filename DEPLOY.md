@@ -100,6 +100,54 @@ curl http://127.0.0.1:5636/api/sensors
 curl http://127.0.0.1:5636/api/event_types
 ```
 
+### 3.5 Docker Compose 一键部署
+
+项目提供完整的 Docker Compose 配置，一键启动 EveBox + Elasticsearch：
+
+```bash
+# 克隆仓库
+git clone https://github.com/zmzmzmzm11/ee.git
+cd ee
+
+# 生产环境（EveBox + Elasticsearch）
+docker compose up -d
+
+# 开发环境（含 Suricata EVE 模拟器）
+docker compose -f docker-compose.dev.yml up -d --build
+
+# 查看日志
+docker compose logs -f
+
+# 停止
+docker compose down
+```
+
+构建完成后访问 **http://localhost:5636**。
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| elasticsearch | 9200 | Elasticsearch 7.17.28，单节点 |
+| evebox | 5636 | EveBox Web Server |
+| suricata-simulator（仅 dev） | - | EVE 事件模拟器 |
+
+### 3.6 单独构建 Docker 镜像
+
+```bash
+# 构建镜像
+docker build -t evebox:latest .
+
+# 运行容器
+docker run -d -p 5636:5636 -v evebox-data:/var/lib/evebox \
+  evebox:latest -e http://elasticsearch:9200
+
+# Makefile 快捷命令
+make docker       # 构建镜像
+make docker-up    # compose 生产环境启动
+make docker-dev   # compose 开发环境启动
+make docker-down  # compose 停止
+make docker-logs  # 查看日志
+```
+
 ---
 
 ## 4. 从源码编译

@@ -11,3 +11,22 @@
 /target
 /build.sh
 /data
+# ===== 新增排除 =====
+/.vscode
+/.idea
+*.swp
+*~
+*.bookmark
+*.pcap
+*.md
+*.docx
+/.git
+/.github
+control.ps1
+control.sh
+start-all.ps1
+stop-all.ps1
+start.txt
+dev.sh
+/elasticsearch
+/tools/__pycache__

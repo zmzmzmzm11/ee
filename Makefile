@@ -80,3 +80,42 @@ fmt:
 fixup:
 	$(MAKE) fmt
 	cargo clippy --fix --allow-dirty
+
+# ===== Docker Targets =====
+
+DOCKER_IMAGE ?= evebox
+DOCKER_TAG   ?= latest
+
+# Build Docker image
+docker:
+	docker build \
+		--build-arg GIT_REV=$(BUILD_REV) \
+		-t $(DOCKER_IMAGE):$(DOCKER_TAG) \
+		.
+
+# Build and start with docker-compose (production)
+docker-up:
+	docker compose up -d --build
+
+# Start with docker-compose (development, includes simulator)
+docker-dev:
+	docker compose -f docker-compose.dev.yml up -d --build
+
+# Stop docker-compose
+docker-down:
+	docker compose down
+	docker compose -f docker-compose.dev.yml down
+
+# View logs
+docker-logs:
+	docker compose logs -f
+
+# Push Docker image
+docker-push:
+	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
+
+# Full release: build + docker image + package
+docker-release: dist docker
+	echo "Release $(DIST_VERSION) built"
+	echo "  Binary: $(EVEBOX_BIN)"
+	echo "  Docker: $(DOCKER_IMAGE):$(DOCKER_TAG)"

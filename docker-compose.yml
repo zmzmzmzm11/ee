@@ -1,0 +1,59 @@
+# EveBox Docker Compose
+# 启动: docker compose up -d
+# 停止: docker compose down
+# 查看日志: docker compose logs -f
+
+version: "3.8"
+
+services:
+  # ===== Elasticsearch =====
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.28
+    container_name: evebox-es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:9200"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ===== EveBox Server =====
+  evebox:
+    image: evebox:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GIT_REV: ${GIT_REV:-unknown}
+    container_name: evebox-server
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - EVEBOX_HTTP_HOST=0.0.0.0
+    ports:
+      - "5636:5636"
+    volumes:
+      - evebox-data:/var/lib/evebox
+    command:
+      - --datastore
+      - elasticsearch
+      - -e
+      - http://elasticsearch:9200
+      - -i
+      - evebox
+    restart: unless-stopped
+
+volumes:
+  es-data:
+    driver: local
+  evebox-data:
+    driver: local

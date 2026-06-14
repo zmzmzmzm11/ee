@@ -1,0 +1,79 @@
+# EveBox 开发环境 Docker Compose
+# 包含 Suricata EVE 模拟器，用于测试和开发
+# 启动: docker compose -f docker-compose.dev.yml up -d
+
+version: "3.8"
+
+services:
+  # ===== Suricata EVE 模拟器 =====
+  suricata-simulator:
+    image: python:3.12-alpine
+    container_name: evebox-simulator
+    working_dir: /app
+    volumes:
+      - ./tools/suricata_simulator.py:/app/simulator.py:ro
+      - evebox-data:/data
+    environment:
+      - EVE_OUTPUT=/data/suricata-eve.json
+      - EVE_INTERVAL=1.5
+    command:
+      - sh
+      - -c
+      - pip install scapy && python /app/simulator.py
+    restart: unless-stopped
+
+  # ===== Elasticsearch =====
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.28
+    container_name: evebox-es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:9200"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ===== EveBox Server =====
+  evebox:
+    image: evebox:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GIT_REV: ${GIT_REV:-dev}
+    container_name: evebox-server
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - EVEBOX_HTTP_HOST=0.0.0.0
+    ports:
+      - "5636:5636"
+    volumes:
+      - evebox-data:/var/lib/evebox
+      - ./data:/data:ro
+    command:
+      - --datastore
+      - elasticsearch
+      - --no-auth
+      - -e
+      - http://elasticsearch:9200
+      - -i
+      - evebox
+      - --input
+      - /data/suricata-eve.json
+    restart: unless-stopped
+
+volumes:
+  es-data:
+    driver: local
+  evebox-data:
+    driver: local
