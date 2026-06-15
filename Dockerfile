@@ -46,7 +46,7 @@ use reqwest::Client;
 use serde_json::json;
 use clap::Command;
 
-async fn dummy() -> SocketAddr {
+pub async fn dummy() -> SocketAddr {
     let _r: Router = Router::new().route("/", get(|| async {}));
     let _c: Client = Client::new();
     let _j = json!({"key": "value"});
