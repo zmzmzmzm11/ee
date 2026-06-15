@@ -34,7 +34,6 @@ ENV BUILD_REV=${BUILD_REV}
 # ---- Cache Rust dependency downloads ----
 # This layer only re-runs when Cargo.toml or Cargo.lock change
 COPY Cargo.toml Cargo.lock ./
-RUN cargo fetch
 
 # ---- Compile dependencies (dummy source trick) ----
 # Create stub files that exercise key dependency types to compile them all.
