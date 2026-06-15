@@ -23,7 +23,7 @@ RUN echo "export const GIT_REV = \"${GIT_REV}\";" > src/gitrev.ts \
  && npm run build
 
 # ===== Stage 2: Backend Build =====
-FROM rust:1-alpine AS backend
+FROM rust:1.86-alpine AS backend
 RUN apk add --no-cache musl-dev sqlite-dev binutils
 WORKDIR /build
 
