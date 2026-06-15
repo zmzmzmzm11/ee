@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
 import { TIME_RANGE, Top } from "../Top";

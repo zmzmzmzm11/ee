@@ -71,8 +71,8 @@ EveBox 是一个基于 Web 的 Suricata EVE 事件查看器和告警管理系统
 ### 3.2 Docker 部署
 
 ```bash
-docker pull jasonish/evebox:latest
-docker run -it -p 5636:5636 jasonish/evebox:latest -e http://elasticsearch:9200
+docker pull ghcr.io/zmzmzmzm11/evebox:latest
+docker run -it -p 5636:5636 ghcr.io/zmzmzmzm11/evebox:latest -e http://elasticsearch:9200
 ```
 
 ### 3.3 Windows 开发环境一键启动

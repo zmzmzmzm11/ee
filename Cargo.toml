@@ -2,12 +2,12 @@
 name = "evebox"
 # Suffix with -dev when not a release.
 version = "0.25.0-dev"
-authors = ["Jason Ish <ish@unx.ca>"]
+authors = ["zmzmzmzm11"]
 edition = "2024"
 description = "A web based Suricata event manager"
 license = "MIT"
-homepage = "https://evebox.org"
-repository = "https://github.com/jasonish/evebox"
+homepage = "https://github.com/zmzmzmzm11/ee"
+repository = "https://github.com/zmzmzmzm11/ee"
 documentation = "https://evebox.org"
 
 # This is not a guarantee, just helps notify me when the MSRV changes.

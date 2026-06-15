@@ -1,32 +1,54 @@
-# EveBox SQLite 独立模式 Docker Compose
+# EveBox Docker Compose — SQLite 独立模式
+# ==========================================
 # 无需 Elasticsearch，使用嵌入式 SQLite 数据库
-# 启动: docker compose -f docker-compose.sqlite.yml up -d --build
-# 注意: 需要先把 eve.json 放到 ./data/ 目录下
-
-version: "3.8"
+# 适用于中小规模部署
+#
+# 前置条件:
+#   1. 将 Suricata EVE JSON 文件放到 ./data/ 目录下
+#   2. 默认读取 ./data/suricata-eve.json
+#
+# 启动:  docker compose -f docker-compose.sqlite.yml up -d --build
+# 停止:  docker compose -f docker-compose.sqlite.yml down
+# 日志:  docker compose -f docker-compose.sqlite.yml logs -f
+#
+# 自定义 EVE 文件路径:
+#   EVE_INPUT=/path/to/eve.json docker compose -f docker-compose.sqlite.yml up -d
+#
+# 访问: http://localhost:5636
 
 services:
   evebox:
-    image: evebox:latest
     build:
       context: .
       dockerfile: Dockerfile
       args:
         GIT_REV: ${GIT_REV:-unknown}
+        BUILD_REV: ${BUILD_REV:-unknown}
+    image: ${EVEBOX_IMAGE:-evebox:latest}
     container_name: evebox-sqlite
+    environment:
+      - EVEBOX_HTTP_HOST=0.0.0.0
+      - TZ=${TZ:-Asia/Shanghai}
     ports:
-      - "5636:5636"
+      - "${EVEBOX_PORT:-5636}:5636"
     volumes:
       - evebox-data:/var/lib/evebox
-      - ./data:/data:ro
+      - ${EVE_INPUT_DIR:-./data}:/data:ro
     command:
       - --datastore
       - sqlite
       - --no-auth
+      - --no-tls
       - -D
       - /var/lib/evebox
       - --input
-      - /data/suricata-eve.json
+      - ${EVE_INPUT_FILE:-/data/suricata-eve.json}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:5636/api/version || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
 
 volumes:

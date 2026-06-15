@@ -1,32 +1,49 @@
-/Dockerfile*
-./webapp/node_modules
-./vendor
-./pgdata*
-./eve*json
-./*.sqlite
-./*.dump
-/Dockerfile
-/.docker_cache
-/.gitlab-ci.yml
+# ===== Artifacts & Build =====
 /target
-/build.sh
-/data
-# ===== 新增排除 =====
+/webapp/node_modules
+/webapp/dist
+
+# ===== Git =====
+/.git
+/.github
+
+# ===== IDE & Editor =====
 /.vscode
 /.idea
 *.swp
 *~
+
+# ===== Data & Runtime =====
+/data
+*.sqlite
 *.bookmark
 *.pcap
+*.dump
+
+# ===== Docs & Misc =====
 *.md
 *.docx
-/.git
-/.github
+LICENSE.txt
+start.txt
+
+# ===== Scripts (not needed in image) =====
 control.ps1
 control.sh
 start-all.ps1
 stop-all.ps1
-start.txt
 dev.sh
+build-dist.sh
+
+# ===== Local Dev =====
 /elasticsearch
+/packaging
 /tools/__pycache__
+/tools/*.pyc
+/examples
+
+# ===== Docker (avoid recursive copy) =====
+Dockerfile
+.dockerignore
+docker-compose*.yml
+.env
+.env.example

@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
 use std::collections::HashMap;
@@ -59,15 +58,6 @@ impl Session {
         Session {
             session_id: Some(session_id),
             username: None,
-            role: None,
-        }
-    }
-
-    pub fn with_username(username: &str) -> Self {
-        let session_id = generate_session_id();
-        Session {
-            session_id: Some(session_id),
-            username: Some(username.to_string()),
             role: None,
         }
     }

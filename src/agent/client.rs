@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
 // EveBox agent client (to EveBox server)

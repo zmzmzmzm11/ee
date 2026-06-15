@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
 import { createSignal, For, Show, Suspense } from "solid-js";
@@ -124,8 +123,8 @@ function About() {
 
         <p>
           GitHub:{" "}
-          <a href="http://github.com/jasonish/evebox">
-            http://github.com/jasonish/evebox
+          <a href="https://github.com/zmzmzmzm11/ee">
+            https://github.com/zmzmzmzm11/ee
           </a>
         </p>
       </div>

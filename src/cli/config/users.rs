@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
 use std::path::{Path, PathBuf};
@@ -55,6 +54,9 @@ struct AddArgs {
     username: Option<String>,
     #[arg(long, short)]
     password: Option<String>,
+    /// Role: "admin" or "user" (default: user)
+    #[arg(long, default_value = "user")]
+    role: String,
 
     #[arg(from_global, id = "config-directory")]
     config_directory: Option<String>,
@@ -140,8 +142,12 @@ async fn add(args: AddArgs) -> Result<()> {
             .prompt()?
     };
 
-    repo.add_user(&username, &password).await?;
-    println!("User added: username=\"{username}\"");
+    if args.role != "admin" && args.role != "user" {
+        return Err(anyhow!("role must be 'admin' or 'user'"));
+    }
+
+    repo.create_user(&username, &password, &args.role).await?;
+    println!("User added: username=\"{username}\", role=\"{}\"", args.role);
 
     Ok(())
 }

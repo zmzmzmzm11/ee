@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
 import { Container, Dropdown, Nav, Navbar, NavDropdown } from "solid-bootstrap";

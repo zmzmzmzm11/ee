@@ -86,41 +86,58 @@ fixup:
 DOCKER_IMAGE ?= evebox
 DOCKER_TAG   ?= latest
 
-# Build Docker image
+# Build Docker image only (no compose)
 docker:
 	docker build \
 		--build-arg GIT_REV=$(BUILD_REV) \
+		--build-arg BUILD_REV=$(BUILD_REV) \
 		-t $(DOCKER_IMAGE):$(DOCKER_TAG) \
 		.
 
-# Build and start with docker-compose (production)
+# Build and start with docker-compose (production: EveBox + ES)
 docker-up:
-	docker compose up -d --build
+	GIT_REV=$(BUILD_REV) BUILD_REV=$(BUILD_REV) \
+		docker compose up -d --build
 
-# Start with docker-compose (development, includes simulator)
+# Start with docker-compose (development: + simulator, auth disabled)
 docker-dev:
-	docker compose -f docker-compose.dev.yml up -d --build
+	GIT_REV=$(BUILD_REV) BUILD_REV=$(BUILD_REV) \
+		docker compose -f docker-compose.dev.yml up -d --build
 
 # Start with SQLite standalone (no ES required)
 docker-sqlite:
-	docker compose -f docker-compose.sqlite.yml up -d --build
+	GIT_REV=$(BUILD_REV) BUILD_REV=$(BUILD_REV) \
+		docker compose -f docker-compose.sqlite.yml up -d --build
 
-# Stop docker-compose
+# Stop docker-compose (all variants)
 docker-down:
-	docker compose down
-	docker compose -f docker-compose.dev.yml down
-	docker compose -f docker-compose.sqlite.yml down
+	docker compose down 2>/dev/null || true
+	docker compose -f docker-compose.dev.yml down 2>/dev/null || true
+	docker compose -f docker-compose.sqlite.yml down 2>/dev/null || true
 
-# View logs
+# View logs (follow mode)
 docker-logs:
 	docker compose logs -f
 
-# Push Docker image
+# View all container status
+docker-ps:
+	docker compose ps
+	docker compose -f docker-compose.dev.yml ps 2>/dev/null || true
+	docker compose -f docker-compose.sqlite.yml ps 2>/dev/null || true
+
+# Push Docker image to registry
 docker-push:
 	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
 
-# Full release: build + docker image + package
+# Full release: binary + docker image
 docker-release: dist docker
-	echo "Release $(DIST_VERSION) built"
-	echo "  Binary: $(EVEBOX_BIN)"
-	echo "  Docker: $(DOCKER_IMAGE):$(DOCKER_TAG)"
+	@echo "Release $(DIST_VERSION) built"
+	@echo "  Binary: $(EVEBOX_BIN)"
+	@echo "  Docker: $(DOCKER_IMAGE):$(DOCKER_TAG)"
+
+# Clean Docker artifacts (images, containers, volumes)
+docker-clean:
+	docker compose down -v 2>/dev/null || true
+	docker compose -f docker-compose.dev.yml down -v 2>/dev/null || true
+	docker compose -f docker-compose.sqlite.yml down -v 2>/dev/null || true
+	docker rmi $(DOCKER_IMAGE):$(DOCKER_TAG) 2>/dev/null || true

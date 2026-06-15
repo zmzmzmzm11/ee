@@ -1,65 +1,87 @@
-# EveBox 开发环境 Docker Compose
-# 包含 Suricata EVE 模拟器，用于测试和开发
-# 启动: docker compose -f docker-compose.dev.yml up -d
-
-version: "3.8"
+# EveBox Docker Compose — Development
+# ======================================
+# 含 Suricata EVE 模拟器，用于测试和开发
+#
+# 启动:  docker compose -f docker-compose.dev.yml up -d --build
+# 停止:  docker compose -f docker-compose.dev.yml down
+# 日志:  docker compose -f docker-compose.dev.yml logs -f
+#
+# 服务: Elasticsearch + EveBox Server + Suricata EVE 模拟器
+# 访问: http://localhost:5636
 
 services:
-  # ===== Suricata EVE 模拟器 =====
+  # ============================================================
+  # Suricata EVE 事件模拟器
+  # ============================================================
   suricata-simulator:
     image: python:3.12-alpine
     container_name: evebox-simulator
     working_dir: /app
     volumes:
       - ./tools/suricata_simulator.py:/app/simulator.py:ro
-      - evebox-data:/data
+      - sim-data:/data
     environment:
       - EVE_OUTPUT=/data/suricata-eve.json
-      - EVE_INTERVAL=1.5
+      - EVE_INTERVAL=${EVE_INTERVAL:-1.5}
     command:
       - sh
       - -c
-      - python /app/simulator.py
+      - |
+        echo "Waiting for Elasticsearch..."
+        until nc -z elasticsearch 9200; do
+          sleep 2
+        done
+        echo "Starting Suricata EVE simulator..."
+        python /app/simulator.py
     restart: unless-stopped
+    depends_on:
+      - elasticsearch
 
-  # ===== Elasticsearch =====
+  # ============================================================
+  # Elasticsearch
+  # ============================================================
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.17.28
-    container_name: evebox-es
+    container_name: evebox-es-dev
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     ports:
-      - "9200:9200"
+      - "127.0.0.1:9200:9200"
     volumes:
-      - es-data:/usr/share/elasticsearch/data
+      - es-dev-data:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD", "curl", "-s", "http://localhost:9200"]
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\|yellow'"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 30s
     restart: unless-stopped
 
-  # ===== EveBox Server =====
+  # ============================================================
+  # EveBox Server (开发模式: 无认证)
+  # ============================================================
   evebox:
-    image: evebox:latest
     build:
       context: .
       dockerfile: Dockerfile
       args:
         GIT_REV: ${GIT_REV:-dev}
-    container_name: evebox-server
+        BUILD_REV: ${BUILD_REV:-dev}
+    image: ${EVEBOX_IMAGE:-evebox:dev}
+    container_name: evebox-server-dev
     depends_on:
       elasticsearch:
         condition: service_healthy
     environment:
       - EVEBOX_HTTP_HOST=0.0.0.0
+      - TZ=${TZ:-Asia/Shanghai}
     ports:
-      - "5636:5636"
+      - "${EVEBOX_PORT:-5636}:5636"
     volumes:
-      - evebox-data:/var/lib/evebox
-      - ./data:/data:ro
+      - evebox-dev-data:/var/lib/evebox
+      - sim-data:/data:ro
     command:
       - --datastore
       - elasticsearch
@@ -70,10 +92,18 @@ services:
       - evebox
       - --input
       - /data/suricata-eve.json
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5636/api/version || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     restart: unless-stopped
 
 volumes:
-  es-data:
+  es-dev-data:
     driver: local
-  evebox-data:
+  evebox-dev-data:
+    driver: local
+  sim-data:
     driver: local

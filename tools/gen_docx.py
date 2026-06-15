@@ -127,13 +127,12 @@ doc.add_page_break()
 # ==================== 1. 项目简介 ====================
 add_heading_styled('1. 项目简介', 1)
 
-add_para('EveBox 是一个基于 Web 的 Suricata EVE 事件查看器和告警管理系统，使用 Rust 编写后端，SolidJS 编写前端。本项目基于 Jason Ish 的 evebox 进行二次开发，增加了用户角色管理、管理员功能等特性。')
+add_para('EveBox 是一个基于 Web 的 Suricata EVE 事件查看器和告警管理系统，使用 Rust 编写后端，SolidJS 编写前端，增加了用户角色管理、管理员功能等特性。')
 
 add_table(
     ['属性', '值'],
     [
         ['GitHub 仓库', 'https://github.com/zmzmzmzm11/ee'],
-        ['上游仓库', 'https://github.com/jasonish/evebox'],
         ['许可证', 'MIT'],
         ['当前版本', '0.25.0-dev'],
         ['后端语言', 'Rust (edition 2024, 最低 1.85.0)'],

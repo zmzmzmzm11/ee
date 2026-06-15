@@ -1,12 +1,17 @@
-# EveBox Docker Compose
-# 启动: docker compose up -d
-# 停止: docker compose down
-# 查看日志: docker compose logs -f
-
-version: "3.8"
+# EveBox Docker Compose — Production
+# ====================================
+# 启动:  docker compose up -d
+# 停止:  docker compose down
+# 日志:  docker compose logs -f
+# 重建:  docker compose up -d --build
+#
+# 服务: Elasticsearch 7.17 + EveBox Server
+# 访问: http://localhost:5636
 
 services:
-  # ===== Elasticsearch =====
+  # ============================================================
+  # Elasticsearch
+  # ============================================================
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.17.28
     container_name: evebox-es
@@ -15,32 +20,37 @@ services:
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     ports:
-      - "9200:9200"
+      - "127.0.0.1:9200:9200"
     volumes:
       - es-data:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD", "curl", "-s", "http://localhost:9200"]
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\|yellow'"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 30s
     restart: unless-stopped
 
-  # ===== EveBox Server =====
+  # ============================================================
+  # EveBox Server
+  # ============================================================
   evebox:
-    image: evebox:latest
     build:
       context: .
       dockerfile: Dockerfile
       args:
         GIT_REV: ${GIT_REV:-unknown}
+        BUILD_REV: ${BUILD_REV:-unknown}
+    image: ${EVEBOX_IMAGE:-evebox:latest}
     container_name: evebox-server
     depends_on:
       elasticsearch:
         condition: service_healthy
     environment:
       - EVEBOX_HTTP_HOST=0.0.0.0
+      - TZ=${TZ:-Asia/Shanghai}
     ports:
-      - "5636:5636"
+      - "${EVEBOX_PORT:-5636}:5636"
     volumes:
       - evebox-data:/var/lib/evebox
     command:
@@ -49,7 +59,13 @@ services:
       - -e
       - http://elasticsearch:9200
       - -i
-      - evebox
+      - ${EVEBOX_INDEX:-evebox}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5636/api/version || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     restart: unless-stopped
 
 volumes:

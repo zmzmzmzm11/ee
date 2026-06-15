@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
 // EveBox agent import. For importing events to an EveBox server.

@@ -1,0 +1,45 @@
+# EveBox Docker 生产环境配置示例
+#
+# 使用方法:
+#   1. 修改此文件中 ES 地址等参数
+#   2. 挂载到容器:  -v ./evebox.yaml:/etc/evebox/evebox.yaml:ro
+#   3. 启动:  docker compose up -d
+#
+# docker-compose.yml 中取消注释:
+#   volumes:
+#     - ./examples/evebox-docker.yaml:/etc/evebox/evebox.yaml:ro
+#   command:
+#     - -c
+#     - /etc/evebox/evebox.yaml
+
+data-directory: /var/lib/evebox
+
+http:
+  host: 0.0.0.0
+  port: 5636
+  tls:
+    enabled: false
+  reverse-proxy: false
+
+authentication:
+  required: true
+
+database:
+  type: elasticsearch
+  elasticsearch:
+    url: http://elasticsearch:9200
+    index: evebox
+    disable-certificate-check: false
+
+# 如果 EveBox 可直接读取 Suricata EVE 文件，启用 input
+# input:
+#   enabled: true
+#   paths:
+#     - /var/log/suricata/eve.json
+
+# 数据保留策略 (SQLite 模式)
+# database:
+#   type: sqlite
+#   retention:
+#     days: 30
+#     size: "10 GB"

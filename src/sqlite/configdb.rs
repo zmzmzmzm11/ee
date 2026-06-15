@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
 use crate::prelude::*;
@@ -140,20 +139,6 @@ impl ConfigDb {
             .collect())
     }
 
-    pub async fn add_user(&self, username: &str, password: &str) -> Result<String, ConfigDbError> {
-        let password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)?;
-        let user_id = uuid::Uuid::new_v4().to_string();
-        sqlx::query(
-            "INSERT INTO users (uuid, username, password, role) VALUES (?, ?, ?, 'admin')",
-        )
-        .bind(&user_id)
-        .bind(username)
-        .bind(password_hash)
-        .execute(&self.pool)
-        .await?;
-        Ok(user_id)
-    }
-
     pub async fn remove_user(&self, username: &str) -> Result<u64, ConfigDbError> {
         Ok(sqlx::query("DELETE FROM users WHERE username = ?")
             .bind(username)
@@ -230,15 +215,6 @@ impl ConfigDb {
             .execute(&self.pool)
             .await?;
         Ok(result.rows_affected() > 0)
-    }
-
-    pub async fn get_user_role(&self, username: &str) -> Result<Option<String>, ConfigDbError> {
-        let role: Option<String> =
-            sqlx::query_scalar("SELECT role FROM users WHERE username = ?")
-                .bind(username)
-                .fetch_optional(&self.pool)
-                .await?;
-        Ok(role)
     }
 
     pub async fn save_session(

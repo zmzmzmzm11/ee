@@ -54,8 +54,8 @@ evebox server -D . --datastore sqlite --input /var/log/suricata/eve.json
 ### Docker
 
 ```bash
-docker pull jasonish/evebox:latest
-docker run -it -p 5636:5636 jasonish/evebox:latest -e http://elasticsearch:9200
+docker pull ghcr.io/zmzmzmzm11/evebox:latest
+docker run -it -p 5636:5636 ghcr.io/zmzmzmzm11/evebox:latest -e http://elasticsearch:9200
 ```
 
 ---

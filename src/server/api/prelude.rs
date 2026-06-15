@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: (C) 2025 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
 pub(super) use std::sync::Arc;

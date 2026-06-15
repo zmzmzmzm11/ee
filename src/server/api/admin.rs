@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: (C) 2024 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
 use crate::prelude::*;
@@ -104,20 +103,21 @@ pub(super) async fn delete_filter(
             .bind(id)
             .fetch_optional(&mut *tx)
             .await?;
-    if row.is_some()
-        && sqlx::query("DELETE FROM filters WHERE id = ?")
-            .bind(id)
-            .execute(&mut *tx)
-            .await
-            .is_ok()
-    {
-        tx.commit().await?;
-    }
+    match row {
+        Some(row) => {
+            sqlx::query("DELETE FROM filters WHERE id = ?")
+                .bind(id)
+                .execute(&mut *tx)
+                .await?;
+            tx.commit().await?;
 
-    // Remove from current ingest processing.
-    if let Some(row) = row {
-        let mut ingest = context.auto_archive.write().unwrap();
-        ingest.remove(&row.filter.0);
+            // Remove from current ingest processing.
+            let mut ingest = context.auto_archive.write().unwrap();
+            ingest.remove(&row.filter.0);
+        }
+        None => {
+            return Err(AppError::BadRequest("filter not found".to_string()));
+        }
     }
 
     Ok(Json(json!({})))
