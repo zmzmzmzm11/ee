@@ -1,24 +1,16 @@
 // SPDX-License-Identifier: MIT
 
-import { createSignal, For, Show, Suspense } from "solid-js";
+import { For } from "solid-js";
 import { Button, Modal, Tab, Tabs } from "solid-bootstrap";
 import { closeHelp, showHelp } from "./Top";
 
-import { createResource } from "solid-js";
-import { getVersion, SERVER_REVISION } from "./api";
-import { GIT_REV } from "./gitrev";
-
 export function HelpModal() {
-  const [tab, setTab] = createSignal("keyboard");
   return (
     <Modal show={showHelp()} onHide={closeHelp} size={"lg"}>
       <Modal.Body>
-        <Tabs activeKey={tab()} onSelect={setTab}>
+        <Tabs activeKey="keyboard">
           <Tab eventKey="keyboard" title="Keyboard Shortcuts">
             <Keyboard />
-          </Tab>
-          <Tab eventKey="about" title="About">
-            <About />
           </Tab>
         </Tabs>
       </Modal.Body>
@@ -91,43 +83,6 @@ function Keyboard() {
           </For>
         </tbody>
       </table>
-    </>
-  );
-}
-
-function About() {
-  const [version] = createResource(getVersion);
-
-  return (
-    <>
-      <div style="padding: 12px">
-        <p>
-          <Suspense fallback={<>Loading version info...</>}>
-            This is EveBox version {version()?.version} (Rev:{" "}
-            {version()?.revision}).
-          </Suspense>
-        </p>
-
-        <Show when={SERVER_REVISION() && SERVER_REVISION() != GIT_REV}>
-          <div class={"alert alert-danger"}>
-            Warning: The server and frontend versions differ. Please reload.
-            <br />
-            Server={SERVER_REVISION()}, Frontend={GIT_REV}.
-          </div>
-        </Show>
-
-        <p>
-          Homepage and Documentation:{" "}
-          <a href="https://evebox.org">https://evebox.org</a>
-        </p>
-
-        <p>
-          GitHub:{" "}
-          <a href="https://github.com/zmzmzmzm11/ee">
-            https://github.com/zmzmzmzm11/ee
-          </a>
-        </p>
-      </div>
     </>
   );
 }
