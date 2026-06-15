@@ -1,39 +1,54 @@
-# EveBox Docker Compose — Production
-# ====================================
-# 启动:  docker compose up -d
-# 停止:  docker compose down
-# 日志:  docker compose logs -f
-# 重建:  docker compose up -d --build
-#
-# 服务: Elasticsearch 7.17 + EveBox Server
-# 访问: http://localhost:5636
+# EveBox + Elasticsearch + Suricata Docker Compose
+# 启动: docker compose up -d --build
+# 停止: docker compose down
 
 services:
-  # ============================================================
-  # Elasticsearch
-  # ============================================================
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.17.28
-    container_name: evebox-es
+    container_name: elasticsearch
+    network_mode: "host"
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    ports:
-      - "127.0.0.1:9200:9200"
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     volumes:
-      - es-data:/usr/share/elasticsearch/data
+      - esdata:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -qE 'green|yellow'"]
+      test: ["CMD-SHELL", "curl -s http://127.0.0.1:9200/_cluster/health | grep -qE 'green|yellow'"]
       interval: 10s
       timeout: 5s
       retries: 20
       start_period: 30s
     restart: unless-stopped
 
-  # ============================================================
-  # EveBox Server
-  # ============================================================
+  suricata:
+    image: suricata/suricata:latest
+    container_name: suricata
+    network_mode: "host"
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+      - IPC_LOCK
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./suricata-logs:/var/log/suricata
+    # -i 后接实际网卡名称（如 eno2 / eth0）
+    command:
+      - -i
+      - eth0
+      - --set
+      - stream.memcap=2gb
+      - --set
+      - flow.memcap=1gb
+    restart: unless-stopped
+
   evebox:
     build:
       context: .
@@ -41,35 +56,28 @@ services:
       args:
         GIT_REV: ${GIT_REV:-unknown}
         BUILD_REV: ${BUILD_REV:-unknown}
-    image: ${EVEBOX_IMAGE:-evebox:latest}
-    container_name: evebox-server
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-    environment:
-      - EVEBOX_HTTP_HOST=0.0.0.0
-      - TZ=${TZ:-Asia/Shanghai}
-    ports:
-      - "${EVEBOX_PORT:-5636}:5636"
+    image: evebox:latest
+    container_name: evebox
+    network_mode: "host"
     volumes:
+      - ./suricata-logs:/var/log/suricata:ro
       - evebox-data:/var/lib/evebox
     command:
       - --datastore
       - elasticsearch
       - -e
-      - http://elasticsearch:9200
-      - -i
-      - ${EVEBOX_INDEX:-evebox}
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:5636/api/version || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      - http://127.0.0.1:9200
+      - --input
+      - /var/log/suricata/eve.json
+      - --port
+      - "5636"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
-  es-data:
+  esdata:
     driver: local
   evebox-data:
     driver: local
