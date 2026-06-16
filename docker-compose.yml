@@ -1,4 +1,5 @@
-# EveBox + Elasticsearch + Suricata Docker Compose
+# EveBox + Elasticsearch Docker Compose
+# 前提: Suricata 已在宿主机运行，eve.json 输出到 ./suricata-logs/
 # 启动: docker compose up -d --build
 # 停止: docker compose down
 
@@ -22,31 +23,6 @@ services:
       timeout: 5s
       retries: 20
       start_period: 30s
-    restart: unless-stopped
-
-  suricata:
-    image: suricata/suricata:latest
-    container_name: suricata
-    network_mode: "host"
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-      - SYS_NICE
-      - IPC_LOCK
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    volumes:
-      - ./suricata-logs:/var/log/suricata
-    # -i 后接实际网卡名称（如 eno2 / eth0）
-    command:
-      - -i
-      - eth0
-      - --set
-      - stream.memcap=2gb
-      - --set
-      - flow.memcap=1gb
     restart: unless-stopped
 
   evebox:
