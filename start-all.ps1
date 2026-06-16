@@ -95,7 +95,7 @@ if (-not (Test-Path "$EsHome\bin\elasticsearch.bat")) {
 Write-Host "`n[2/3] Suricata..." -ForegroundColor Yellow
 
 $SuricataExe = "C:\Program Files\Suricata\suricata.exe"
-$SuricataYaml = "$Root\data\suricata.yaml"
+$SuricataYaml = "$Root\tools\suricata-evebox.yaml"
 $EveOutput = "$Root\data\suricata-eve.json"
 
 # Get network adapter
