@@ -95,8 +95,8 @@ if (-not (Test-Path "$EsHome\bin\elasticsearch.bat")) {
 Write-Host "`n[2/3] Suricata..." -ForegroundColor Yellow
 
 $SuricataExe = "C:\Program Files\Suricata\suricata.exe"
-$SuricataYaml = "C:\Program Files\Suricata\suricata.yaml"
-$EveOutput = "C:\Program Files\Suricata\eve.json"
+$SuricataYaml = "$Root\data\suricata.yaml"
+$EveOutput = "$Root\data\suricata-eve.json"
 
 # Get network adapter
 $adapter = (Get-NetAdapter | Where-Object Status -eq "Up" | Select-Object -First 1).Name
@@ -117,6 +117,9 @@ if (-not (Test-Path $SuricataExe)) {
     Start-Process -FilePath "python" -ArgumentList $SimulatorPy -WindowStyle Minimized
 } else {
     if (-not (Test-Path "$Root\data")) { New-Item -Path "$Root\data" -ItemType Directory -Force | Out-Null }
+
+    # Ensure log dir exists
+    New-Item -Path "$Root\data\logs" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
 
     Write-Host "  Starting Suricata on $adapter..." -ForegroundColor Gray
     Start-Process -FilePath $SuricataExe -ArgumentList "-c", $SuricataYaml, "-i", $adapter -WindowStyle Minimized
