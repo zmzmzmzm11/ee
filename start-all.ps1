@@ -127,13 +127,21 @@ $eveboxArgs = @(
     "--input", $EveOutput,
     "-p", $port
 )
-Start-Process -FilePath $EveBoxExe -ArgumentList $eveboxArgs -WindowStyle Minimized
+$EveLog = "$Root\data\evebox.log"
+Start-Process -FilePath $EveBoxExe -ArgumentList $eveboxArgs -RedirectStandardOutput $EveLog -RedirectStandardError $EveLog -WindowStyle Minimized
 
 Write-Host "  Waiting for EveBox..." -ForegroundColor Gray
 $waited = 0
 do {
     Start-Sleep -Seconds 2
     $waited += 2
+    # Check for admin password in log
+    if (Test-Path $EveLog) {
+        $pwLine = Select-String -Path $EveLog -Pattern "username=admin, password=" -SimpleMatch | Select-Object -Last 1
+        if ($pwLine) {
+            Write-Host "  $pwLine" -ForegroundColor Magenta
+        }
+    }
     try {
         $ver = Invoke-WebRequest -Uri "http://localhost:$port/api/version" -TimeoutSec 3 -UseBasicParsing -ErrorAction Stop
         Write-Host "  EveBox ready ($waited s)" -ForegroundColor Green
