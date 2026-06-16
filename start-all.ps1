@@ -128,7 +128,8 @@ $eveboxArgs = @(
     "-p", $port
 )
 $EveLog = "$Root\data\evebox.log"
-Start-Process -FilePath $EveBoxExe -ArgumentList $eveboxArgs -RedirectStandardOutput $EveLog -RedirectStandardError $EveLog -WindowStyle Minimized
+$eveboxCmd = "`"$EveBoxExe`" $($eveboxArgs -join ' ') 2>&1"
+Start-Process -FilePath "cmd" -ArgumentList "/c", $eveboxCmd -RedirectStandardOutput $EveLog -WindowStyle Minimized
 
 Write-Host "  Waiting for EveBox..." -ForegroundColor Gray
 $waited = 0
