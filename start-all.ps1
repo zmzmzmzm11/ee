@@ -98,16 +98,19 @@ $SuricataExe = "C:\Program Files\Suricata\suricata.exe"
 $SuricataYaml = "$Root\tools\suricata-evebox.yaml"
 $EveOutput = "$Root\data\suricata-eve.json"
 
-# Get network adapter
-$adapter = (Get-NetAdapter | Where-Object Status -eq "Up" | Select-Object -First 1).Name
+# Get physical network adapter (skip VMnet, Loopback, Hyper-V)
+$allAdapters = Get-NetAdapter | Where-Object Status -eq "Up"
+$adapter = ($allAdapters | Where-Object { $_.Name -notlike "*VMware*" -and $_.Name -notlike "*VMnet*" -and $_.Name -notlike "*Loopback*" -and $_.Name -notlike "*vEthernet*" } | Select-Object -First 1).Name
+if (-not $adapter) { $adapter = ($allAdapters | Select-Object -First 1).Name }
 if (-not $adapter) {
     Write-Host "  [ERROR] No active network adapter found" -ForegroundColor Red
     pause; exit 1
 }
-Write-Host "  Using adapter: $adapter" -ForegroundColor Gray
+Write-Host "  Using adapter: $adapter" -ForegroundColor Green
 
-# Kill old Suricata
+# Kill old Suricata and simulator
 Get-Process suricata -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Get-Process python -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*suricata_simulator*" } | Stop-Process -Force -ErrorAction SilentlyContinue
 
 if (-not (Test-Path $SuricataExe)) {
     Write-Host "  [SKIP] Suricata not found at $SuricataExe" -ForegroundColor Yellow
