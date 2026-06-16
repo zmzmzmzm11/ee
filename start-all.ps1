@@ -120,7 +120,7 @@ Write-Host "  Using port $port" -ForegroundColor Gray
 $eveboxArgs = @(
     "server",
     "--datastore", "elasticsearch",
-    "--no-auth", "--no-tls",
+    "--no-tls",
     "-D", "$Root\data",
     "-e", "http://localhost:9200",
     "-i", "evebox",
