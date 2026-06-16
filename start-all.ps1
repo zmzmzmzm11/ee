@@ -121,6 +121,9 @@ if (-not (Test-Path $SuricataExe)) {
     # Ensure log dir exists
     New-Item -Path "$Root\data\logs" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
 
+    # Remove old eve.json so we can detect Suricata's fresh output
+    Remove-Item $EveOutput -Force -ErrorAction SilentlyContinue
+
     Write-Host "  Starting Suricata on $adapter..." -ForegroundColor Gray
     Start-Process -FilePath $SuricataExe -ArgumentList "-c", $SuricataYaml, "-i", $adapter -WindowStyle Minimized
 
@@ -129,16 +132,18 @@ if (-not (Test-Path $SuricataExe)) {
     do {
         Start-Sleep -Seconds 3
         $waited += 3
-        if (Test-Path $EveOutput) { break }
+        if ((Test-Path $EveOutput) -and ((Get-Item $EveOutput).Length -gt 0)) { break }
         if ($waited -ge 30) { break }
     } while ($true)
 
-    if (Test-Path $EveOutput) {
+    if ((Test-Path $EveOutput) -and ((Get-Item $EveOutput).Length -gt 0)) {
         $count = (Get-Content $EveOutput | Measure-Object -Line).Lines
         Write-Host "  Suricata ready ($waited s), events: $count" -ForegroundColor Green
     } else {
-        Write-Host "  [WARN] eve.json not created after ${waited}s" -ForegroundColor Yellow
-        Write-Host "  Check: C:\Program Files\Suricata\suricata.log" -ForegroundColor Gray
+        Write-Host "  [WARN] Suricata didn't create eve.json — falling back to simulator" -ForegroundColor Yellow
+        Get-Process suricata -ErrorAction SilentlyContinue | Stop-Process -Force
+        Start-Process -FilePath "python" -ArgumentList $SimulatorPy -WindowStyle Minimized
+        $EveOutput = "$Root\data\suricata-eve.json"
     }
 }
 
