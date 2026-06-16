@@ -76,26 +76,42 @@ if (-not (Test-Path "$EsHome\bin\elasticsearch.bat")) {
     }
 }
 
-# ====== 2. Start Suricata Simulator ======
-Write-Host "`n[2/3] Suricata Simulator..." -ForegroundColor Yellow
+# ====== 2. Start Suricata ======
+Write-Host "`n[2/3] Suricata..." -ForegroundColor Yellow
 
-# Kill old simulator
-Get-Process python -ErrorAction SilentlyContinue |
-    Where-Object { $_.CommandLine -like "*suricata_simulator*" } |
-    Stop-Process -Force -ErrorAction SilentlyContinue
+$SuricataExe = "C:\Program Files\Suricata\suricata.exe"
+$SuricataYaml = "C:\Program Files\Suricata\suricata.yaml"
+$EveOutput = "C:\Program Files\Suricata\eve.json"
 
-$EveOutput = "$Root\data\suricata-eve.json"
-if (-not (Test-Path "$Root\data")) { New-Item -Path "$Root\data" -ItemType Directory -Force | Out-Null }
+# Get network adapter
+$adapter = (Get-NetAdapter | Where-Object Status -eq "Up" | Select-Object -First 1).Name
+if (-not $adapter) {
+    Write-Host "  [ERROR] No active network adapter found" -ForegroundColor Red
+    pause; exit 1
+}
+Write-Host "  Using adapter: $adapter" -ForegroundColor Gray
 
-$env:EVE_OUTPUT = $EveOutput
-$env:EVE_INTERVAL = "1.5"
-Start-Process -FilePath "python" -ArgumentList $SimulatorPy -WindowStyle Minimized
-Start-Sleep -Seconds 3
-if (Test-Path $EveOutput) {
-    $count = (Get-Content $EveOutput | Measure-Object -Line).Lines
-    Write-Host "  Running, events: $count" -ForegroundColor Green
+# Kill old Suricata
+Get-Process suricata -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+
+if (-not (Test-Path $SuricataExe)) {
+    Write-Host "  [SKIP] Suricata not found at $SuricataExe" -ForegroundColor Yellow
+    Write-Host "  Falling back to simulator..." -ForegroundColor Gray
+    $EveOutput = "$Root\data\suricata-eve.json"
+    if (-not (Test-Path "$Root\data")) { New-Item -Path "$Root\data" -ItemType Directory -Force | Out-Null }
+    Start-Process -FilePath "python" -ArgumentList $SimulatorPy -WindowStyle Minimized
 } else {
-    Write-Host "  Running, waiting for first events..." -ForegroundColor Green
+    # Ensure data dir exists
+    if (-not (Test-Path "$Root\data")) { New-Item -Path "$Root\data" -ItemType Directory -Force | Out-Null }
+
+    Start-Process -FilePath $SuricataExe -ArgumentList "-c", $SuricataYaml, "-i", $adapter -WindowStyle Minimized
+    Start-Sleep -Seconds 5
+    if (Test-Path $EveOutput) {
+        $count = (Get-Content $EveOutput | Measure-Object -Line).Lines
+        Write-Host "  Running, events: $count" -ForegroundColor Green
+    } else {
+        Write-Host "  Running, waiting for first events..." -ForegroundColor Green
+    }
 }
 
 # ====== 3. Start EveBox ======
