@@ -1,7 +1,16 @@
 # EveBox Start-All Script (PowerShell)
 # Usage: .\start-all.ps1
+# Requires: Administrator (auto-elevates)
 
 $ErrorActionPreference = "Continue"
+
+# Auto-elevate to admin
+if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Host "Requesting administrator privileges..." -ForegroundColor Yellow
+    Start-Process PowerShell -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+    exit
+}
+
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $Root
 
@@ -101,16 +110,26 @@ if (-not (Test-Path $SuricataExe)) {
     if (-not (Test-Path "$Root\data")) { New-Item -Path "$Root\data" -ItemType Directory -Force | Out-Null }
     Start-Process -FilePath "python" -ArgumentList $SimulatorPy -WindowStyle Minimized
 } else {
-    # Ensure data dir exists
     if (-not (Test-Path "$Root\data")) { New-Item -Path "$Root\data" -ItemType Directory -Force | Out-Null }
 
+    Write-Host "  Starting Suricata on $adapter..." -ForegroundColor Gray
     Start-Process -FilePath $SuricataExe -ArgumentList "-c", $SuricataYaml, "-i", $adapter -WindowStyle Minimized
-    Start-Sleep -Seconds 5
+
+    Write-Host "  Waiting for Suricata to initialize..." -ForegroundColor Gray
+    $waited = 0
+    do {
+        Start-Sleep -Seconds 3
+        $waited += 3
+        if (Test-Path $EveOutput) { break }
+        if ($waited -ge 30) { break }
+    } while ($true)
+
     if (Test-Path $EveOutput) {
         $count = (Get-Content $EveOutput | Measure-Object -Line).Lines
-        Write-Host "  Running, events: $count" -ForegroundColor Green
+        Write-Host "  Suricata ready ($waited s), events: $count" -ForegroundColor Green
     } else {
-        Write-Host "  Running, waiting for first events..." -ForegroundColor Green
+        Write-Host "  [WARN] eve.json not created after ${waited}s" -ForegroundColor Yellow
+        Write-Host "  Check: C:\Program Files\Suricata\suricata.log" -ForegroundColor Gray
     }
 }
 
