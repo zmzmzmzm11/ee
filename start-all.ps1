@@ -64,20 +64,26 @@ if (-not (Test-Path "$EsHome\bin\elasticsearch.bat")) {
     } catch {
         Write-Host "  Starting Elasticsearch..." -ForegroundColor Gray
         $env:ES_JAVA_HOME = $env:JAVA_HOME
-        $esProc = Start-Process -FilePath "$EsHome\bin\elasticsearch.bat" -WindowStyle Minimized -PassThru
+        $EsWorkDir = "$EsHome\bin"
+        $esProc = Start-Process -FilePath "$EsWorkDir\elasticsearch.bat" -WorkingDirectory $EsWorkDir -WindowStyle Minimized -PassThru
 
         Write-Host "  Waiting for ES to be ready..." -ForegroundColor Gray
         $waited = 0
+        $shown = 0
         do {
             Start-Sleep -Seconds 5
             $waited += 5
+            if ($waited - $shown -ge 15) {
+                Write-Host "  ... still waiting ($waited s)" -ForegroundColor Gray
+                $shown = $waited
+            }
             try {
                 Invoke-WebRequest -Uri "http://localhost:9200" -TimeoutSec 3 -UseBasicParsing -ErrorAction Stop | Out-Null
                 Write-Host "  Elasticsearch ready ($waited s)" -ForegroundColor Green
                 break
             } catch {
                 if ($waited -ge 120) {
-                    Write-Host "  [WARN] ES startup timeout" -ForegroundColor Yellow
+                    Write-Host "  [WARN] ES startup timeout, continuing anyway..." -ForegroundColor Yellow
                     break
                 }
             }
